@@ -165,6 +165,17 @@ Function Get-HostList {
         $vmhost | Add-Member -MemberType NoteProperty -Name Serial# -Value ($vmview.Hardware.SystemInfo.OtherIdentifyingInfo | Where {$_.IdentifierType.Key -eq "ServiceTag"}).IdentifierValue
         $vmhost | Add-Member -MemberType NoteProperty -Name BiosVersion -Value $vmview.Hardware.BiosInfo.BiosVersion
         $vmhost | Add-Member -MemberType NoteProperty -Name BiosReleaseDate -Value $vmview.Hardware.BiosInfo.ReleaseDate
+        $vmhost | Add-Member -MemberType NoteProperty -Name RACFirmware -Value ($vmview.runtime.healthsystemruntime.systemhealthinfo.numericsensorinfo | where {$_.Name -Like "*BMC Firmware*"}).Name.Split(" ")[($_.count)-1]
+        $SmartArray = ($vmview.runtime.healthsystemruntime.systemhealthinfo.numericsensorinfo | where {$_.Name -Like "*Smart Array*"}).Name
+        if ($SmartArray.count -le 0){
+            $vmhost | Add-Member -MemberType NoteProperty -Name SmartArrayFirmware -Value "N/A"
+            }
+        if ($SmartArray.count -gt 1){
+            $vmhost | Add-Member -MemberType NoteProperty -Name SmartArrayFirmware -Value $SmartArray[0].split(" ")[($_.count)-1]
+            }
+            Else{
+                $vmhost | Add-Member -MemberType NoteProperty -Name SmartArrayFirmware -Value $SmartArray.split(" ")[($_.count)-1]
+            }
         $vmhost | Add-Member -MemberType NoteProperty -Name Product -Value $vmview.Config.Product.Name
         $vmhost | Add-Member -MemberType NoteProperty -Name Version -Value $vmview.Config.Product.Version
         $vmhost | Add-Member -MemberType NoteProperty -Name Build -Value $vmview.Config.Product.Build
@@ -283,7 +294,7 @@ Function Convert-To-Excel {
 # Get Start Time
 $startDTM = (Get-Date)
 
-CLS
+#CLS
 $ErrorActionPreference="SilentlyContinue"
 
 "=========================================================="
