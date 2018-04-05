@@ -1,4 +1,5 @@
-﻿# +------------------------------------------------------+
+﻿<#
+# +------------------------------------------------------+
 # |        Load VMware modules if not loaded             |
 # +------------------------------------------------------+
 "Loading VMWare Modules"
@@ -13,7 +14,7 @@ if ( !(Get-Module -Name VMware.VimAutomation.Core -ErrorAction SilentlyContinue)
     . (join-path -path (Get-ItemProperty  $Regkey).InstallPath -childpath 'Scripts\Initialize-PowerCLIEnvironment.ps1')
 }
 $ErrorActionPreference="Continue"
-
+#>
 
 # -----------------------
 # Define Global Variables
@@ -87,10 +88,11 @@ Function Get-VMListing {
     $Data = @()
 
     ForEach ($VM in $VMS) {
-        $NICs = $VM.NetworkAdapters
+        $VMGuest = $VM | Get-VMGuest
+        $NICs = $VM | Get-NetworkAdapter
         ForEach ($NIC in $NICs) {
             $into = New-Object PSObject
-            Add-Member -InputObject $into -MemberType NoteProperty -Name Host -Value $VM.Host.Name
+            Add-Member -InputObject $into -MemberType NoteProperty -Name Host -Value $VM.vmHost.Name
             Add-Member -InputObject $into -MemberType NoteProperty -Name Folder -Value $VM.Folder.Name
             Add-Member -InputObject $into -MemberType NoteProperty -Name Cluster -Value $VM.Folder.Parent.Name
             Add-Member -InputObject $into -MemberType NoteProperty -Name VMName -Value $VM.Name
@@ -101,13 +103,15 @@ Function Get-VMListing {
             Add-Member -InputObject $into -MemberType NoteProperty -Name NICType -Value $Nic.Type
             Add-Member -InputObject $into -MemberType NoteProperty -Name MACAddress -Value $Nic.MacAddress
             Add-Member -InputObject $into -MemberType NoteProperty -Name Network -Value $Nic.NetworkName
+            Add-Member -InputObject $into -MemberType NoteProperty -Name IP-Addresses -Value $VMGuest.IPAddress[0]
+            Add-Member -InputObject $into -MemberType NoteProperty -Name Address-Type -Value $NIC.ExtensionData.AddressType
             Add-Member -InputObject $into -MemberType NoteProperty -Name VMToolsVersion -Value $VM.Guest.ExtensionData.ToolsVersion
             Add-Member -InputObject $into -MemberType NoteProperty -Name VMToolsVersionStatus -Value $VM.Guest.ExtensionData.ToolsVersionStatus
             Add-Member -InputObject $into -MemberType NoteProperty -Name VMToolsRunningStatus -Value $VM.Guest.ExtensionData.ToolsRunningStatus
             $Data += $into
         }
     }
-$Data | Export-CSV -Path $Global:Folder\$Global:VCname-HostList.csv -NoTypeInformation
+$Data | Export-CSV -Path $Global:Folder\$Global:VCname-VMList.csv -NoTypeInformation
 }
 
 #**************************
@@ -179,7 +183,7 @@ Function Convert-To-Excel {
 $startDTM = (Get-Date)
 
 CLS
-$ErrorActionPreference="SilentlyContinue"
+#$ErrorActionPreference="SilentlyContinue"
 
 "=========================================================="
 " "
