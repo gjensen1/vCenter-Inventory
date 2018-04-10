@@ -158,10 +158,13 @@ Function Get-HostList {
     $Count = 1
     #$Global:MasterList = Get-View -ViewType HostSystem -Filter @{"Name" = "itspaublesx101.cihs.gov.on.ca"}
     $Global:MasterList = Get-View -ViewType HostSystem
+    "----------------------------------------------------------"
+    "Generating Host Details from Host View"
     ForEach ($vmview in $Global:MasterList){
         Write-Progress -Id 0 -Activity 'Generating Host Details from Host View' -Status "Processing $($count) of $($Global:MasterList.count)" -CurrentOperation $_.Name -PercentComplete (($count/$Global:MasterList.count) * 100)
         $vmhost=New-Object PsObject
-        $vmhost | Add-Member -MemberType NoteProperty -Name Name -Value $vmview.Name
+        $vmhost | Add-Member -MemberType NoteProperty -Name FQDN -Value $vmview.Name
+        $vmhost | Add-Member -MemberType NoteProperty -Name ShortName -Value $vmview.Name.Split(".")[0]
         $vmhost | Add-Member -MemberType NoteProperty -Name State -Value $vmview.Runtime.ConnectionState
         $vmhost | Add-Member -MemberType NoteProperty -Name Vendor -Value $vmview.Hardware.systemInfo.Vendor
         $vmhost | Add-Member -MemberType NoteProperty -Name Model -Value $vmview.Hardware.systemInfo.Model
