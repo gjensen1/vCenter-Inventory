@@ -90,6 +90,7 @@ Function Get-VMListing {
     ForEach ($VM in $VMS) {
         $VMGuest = $VM | Get-VMGuest
         $NICs = $VM | Get-NetworkAdapter
+        $VMDisks = Get-HardDisk -VM $VM
         ForEach ($NIC in $NICs) {
             $into = New-Object PSObject
             Add-Member -InputObject $into -MemberType NoteProperty -Name Host -Value $VM.vmHost.Name
@@ -99,6 +100,7 @@ Function Get-VMListing {
             Add-Member -InputObject $into -MemberType NoteProperty -Name GuestOS -Value $VM.guest.OSFullName
             Add-Member -InputObject $into -MemberType NoteProperty -Name vCPU -Value $VM.NumCPU
             Add-Member -InputObject $into -MemberType NoteProperty -Name MemoryGB -Value $VM.MemoryGB
+            Add-Member -InputObject $into -MemberType NoteProperty -Name C_DriveSizeGB -Value $VMdisks.CapacityGB[0]
             Add-Member -InputObject $into -MemberType NoteProperty -Name PowerState -Value $VM.PowerState
             Add-Member -InputObject $into -MemberType NoteProperty -Name NICType -Value $Nic.Type
             Add-Member -InputObject $into -MemberType NoteProperty -Name MACAddress -Value $Nic.MacAddress
