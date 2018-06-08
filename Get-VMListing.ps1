@@ -86,12 +86,14 @@ Function Get-VMListing {
     "Getting Listing of Virtual Machines in $Global:VCName"
     $VMs= Get-VM *
     $Data = @()
-
+    $Count = 1
+    
     ForEach ($VM in $VMS) {
+        Write-Progress -Id 0 -Activity 'Generating VM Details ' -Status "Processing $($count) of $($VMs.count)" -CurrentOperation $_.Name -PercentComplete (($count/$VMS.count) * 100)
         $VMGuest = $VM | Get-VMGuest
         $NICs = $VM | Get-NetworkAdapter
         $VMDisks = Get-HardDisk -VM $VM
-        ForEach ($NIC in $NICs) {
+        #ForEach ($NIC in $NICs) {
             $into = New-Object PSObject
             Add-Member -InputObject $into -MemberType NoteProperty -Name Host -Value $VM.vmHost.Name
             Add-Member -InputObject $into -MemberType NoteProperty -Name Folder -Value $VM.Folder.Name
@@ -100,19 +102,52 @@ Function Get-VMListing {
             Add-Member -InputObject $into -MemberType NoteProperty -Name GuestOS -Value $VM.guest.OSFullName
             Add-Member -InputObject $into -MemberType NoteProperty -Name vCPU -Value $VM.NumCPU
             Add-Member -InputObject $into -MemberType NoteProperty -Name MemoryGB -Value $VM.MemoryGB
-            Add-Member -InputObject $into -MemberType NoteProperty -Name C_DriveSizeGB -Value $VMdisks.CapacityGB[0]
+            If ($VMDisks.count -eq 1){
+                Add-Member -InputObject $into -MemberType NoteProperty -Name HD1-Name -Value $VMDisks.Name
+                Add-Member -InputObject $into -MemberType NoteProperty -Name HD1_DrvSizeGB -Value $VMdisks.CapacityGB
+            }
+            If ($VMDisks.count -gt 1){
+                Add-Member -InputObject $into -MemberType NoteProperty -Name HD1-Name -Value $VMDisks.Name[0]
+                Add-Member -InputObject $into -MemberType NoteProperty -Name HD1_DrvSizeGB -Value $VMdisks.CapacityGB[0]
+                Add-Member -InputObject $into -MemberType NoteProperty -Name HD2-Name -Value $VMDisks.Name[1]
+                Add-Member -InputObject $into -MemberType NoteProperty -Name HD2_DrvSizeGB -Value $VMdisks.CapacityGB[1]
+                Add-Member -InputObject $into -MemberType NoteProperty -Name HD3-Name -Value $VMDisks.Name[2]
+                Add-Member -InputObject $into -MemberType NoteProperty -Name HD3_DrvSizeGB -Value $VMdisks.CapacityGB[2]
+            }
             Add-Member -InputObject $into -MemberType NoteProperty -Name PowerState -Value $VM.PowerState
-            Add-Member -InputObject $into -MemberType NoteProperty -Name NICType -Value $Nic.Type
-            Add-Member -InputObject $into -MemberType NoteProperty -Name MACAddress -Value $Nic.MacAddress
-            Add-Member -InputObject $into -MemberType NoteProperty -Name Network -Value $Nic.NetworkName
-            Add-Member -InputObject $into -MemberType NoteProperty -Name IP-Addresses -Value $VMGuest.IPAddress[0]
-            Add-Member -InputObject $into -MemberType NoteProperty -Name Address-Type -Value $NIC.ExtensionData.AddressType
+
+            if ($nics.count -eq 1){
+                Add-Member -InputObject $into -MemberType NoteProperty -Name NIC1-Type -Value $Nics.Type
+                Add-Member -InputObject $into -MemberType NoteProperty -Name NIC1-MACAddress -Value $Nics.MacAddress
+                Add-Member -InputObject $into -MemberType NoteProperty -Name NIC1-Network -Value $Nics.NetworkName
+                Add-Member -InputObject $into -MemberType NoteProperty -Name NIC1-Adr-Type -Value $NICS.ExtensionData.AddressType
+            }
+            if ($nics.count -gt 1){
+                Add-Member -InputObject $into -MemberType NoteProperty -Name NIC1-Type -Value $Nics.Type[0]
+                Add-Member -InputObject $into -MemberType NoteProperty -Name NIC1-MACAddress -Value $Nics.MacAddress[0]
+                Add-Member -InputObject $into -MemberType NoteProperty -Name NIC1-Network -Value $Nics.NetworkName[0]
+                Add-Member -InputObject $into -MemberType NoteProperty -Name NIC1-Adr-Type -Value $NICS.ExtensionData.AddressType[0]
+                Add-Member -InputObject $into -MemberType NoteProperty -Name NIC2-Type -Value $Nics.Type[1]
+                Add-Member -InputObject $into -MemberType NoteProperty -Name NIC2-MACAddress -Value $Nics.MacAddress[1]
+                Add-Member -InputObject $into -MemberType NoteProperty -Name NIC2-Network -Value $Nics.NetworkName[1]
+                Add-Member -InputObject $into -MemberType NoteProperty -Name NIC2-Adr-Type -Value $NICS.ExtensionData.AddressType[1]
+            }
+            if ($VMGuest.IPAddress.Count -eq 1){
+                Add-Member -InputObject $into -MemberType NoteProperty -Name IP-Adr1 -Value $VMGuest.IPAddress    
+            }
+            if ($VMGuest.IPAddress.Count -gt 1){
+                Add-Member -InputObject $into -MemberType NoteProperty -Name IP-Adr1 -Value $VMGuest.IPAddress[0]
+                Add-Member -InputObject $into -MemberType NoteProperty -Name IP-Adr2 -Value $VMGuest.IPAddress[1]
+            }
             Add-Member -InputObject $into -MemberType NoteProperty -Name VMToolsVersion -Value $VM.Guest.ExtensionData.ToolsVersion
             Add-Member -InputObject $into -MemberType NoteProperty -Name VMToolsVersionStatus -Value $VM.Guest.ExtensionData.ToolsVersionStatus
             Add-Member -InputObject $into -MemberType NoteProperty -Name VMToolsRunningStatus -Value $VM.Guest.ExtensionData.ToolsRunningStatus
             $Data += $into
-        }
+            $into = $null
+            $Count++
+        #}
     }
+Write-Progress -Id 0 -Activity 'Generating VM Details ' -Completed
 $Data | Export-CSV -Path $Global:Folder\$Global:VCname-VMList.csv -NoTypeInformation
 }
 

@@ -147,6 +147,42 @@ Function Clean-Up {
 # EndFunction Clean-Up
 #*********************
 
+#***********************
+# Function Get-IODevices
+#***********************
+Function Get-IODevices{
+    [CmdletBinding()]
+    Param($vmHost)
+    $AllInfo = @()
+
+    $esxcli = Get-ESXCLI -VMHost $vmHost -V2
+    $niclist = $esxcli.network.nic.list.Invoke() 
+
+    Foreach ($nic in $niclist){
+        $Info = "" | Select Description, Driver, DriverVersion, FirmwareVersion, VibVersion
+     
+        $vmnicDetail = $esxcli.network.nic.get.Invoke(@{nicname = $nic.Name})
+        $Info.Description = $nic.Description
+        $Info.Driver = $vmnicDetail.DriverInfo.Driver
+        $Info.DriverVersion = $vmnicDetail.DriverInfo.Version
+        $Info.FirmwareVersion = $vmnicDetail.DriverInfo.FirmwareVersion
+      
+        # Get driver vib package version
+        Try{
+            $driverVib = $esxcli.software.vib.get.Invoke(@{vibname = "net-"+$vmnicDetail.DriverInfo.Driver})
+            }
+        Catch{
+            $driverVib = $esxcli.software.vib.get.Invoke(@{vibname = $vmnicDetail.DriverInfo.Driver})
+            }
+        $Info.VibVersion = $driverVib.Version
+        $AllInfo += $Info
+   }
+   Return $AllInfo
+}
+#***************************
+# End-Function Get-IODevices
+#***************************
+
 #**********************
 # Function Get-HostList
 #**********************
@@ -163,6 +199,9 @@ Function Get-HostList {
     ForEach ($vmview in $Global:MasterList){
         Write-Progress -Id 0 -Activity 'Generating Host Details from Host View' -Status "Processing $($count) of $($Global:MasterList.count)" -CurrentOperation $_.Name -PercentComplete (($count/$Global:MasterList.count) * 100)
         $vmhost=New-Object PsObject
+
+        $IOInfo = Get-Iodevices $vmview.name
+
         $vmhost | Add-Member -MemberType NoteProperty -Name FQDN -Value $vmview.Name
         $vmhost | Add-Member -MemberType NoteProperty -Name ShortName -Value $vmview.Name.Split(".")[0]
         $vmhost | Add-Member -MemberType NoteProperty -Name State -Value $vmview.Runtime.ConnectionState
@@ -181,6 +220,25 @@ Function Get-HostList {
             }
             Else{
                 $vmhost | Add-Member -MemberType NoteProperty -Name SmartArrayFirmware -Value $SmartArray.split(" ")[($_.count)-1]
+            }
+        if ($IOInfo.count -eq 1){
+            $vmhost | Add-Member -MemberType NoteProperty -Name NetworkDescription -Value $IOInfo.Description
+            $vmhost | Add-Member -MemberType NoteProperty -Name NetworkDrv -Value $IOInfo.Driver
+            $vmhost | Add-Member -MemberType NoteProperty -Name NetworkDrvVer -Value $IOInfo.DriverVersion
+            $vmhost | Add-Member -MemberType NoteProperty -Name NetworkFirmware -Value $IOInfo.FirmwareVersion
+            $vmhost | Add-Member -MemberType NoteProperty -Name NetworkVIBVersion -Value $IOInfo.VibVersion 
+            }
+        if ($IOInfo.Count -gt 1){
+            $vmhost | Add-Member -MemberType NoteProperty -Name NetworkDescription1 -Value $IOInfo.Description[0]
+            $vmhost | Add-Member -MemberType NoteProperty -Name NetworkDrv1 -Value $IOInfo.Driver[0]
+            $vmhost | Add-Member -MemberType NoteProperty -Name NetworkDrvVer1 -Value $IOInfo.DriverVersion[0]
+            $vmhost | Add-Member -MemberType NoteProperty -Name NetworkFirmware1 -Value $IOInfo.FirmwareVersion[0]
+            $vmhost | Add-Member -MemberType NoteProperty -Name NetworkVIBVersion1 -Value $IOInfo.VibVersion[0] 
+            $vmhost | Add-Member -MemberType NoteProperty -Name NetworkDescription2 -Value $IOInfo.Description[2]
+            $vmhost | Add-Member -MemberType NoteProperty -Name NetworkDrv2 -Value $IOInfo.Driver[2]
+            $vmhost | Add-Member -MemberType NoteProperty -Name NetworkDrvVer2 -Value $IOInfo.DriverVersion[2]
+            $vmhost | Add-Member -MemberType NoteProperty -Name NetworkFirmware2 -Value $IOInfo.FirmwareVersion[2]
+            $vmhost | Add-Member -MemberType NoteProperty -Name NetworkVIBVersion2 -Value $IOInfo.VibVersion[2] 
             }
         $vmhost | Add-Member -MemberType NoteProperty -Name Product -Value $vmview.Config.Product.Name
         $vmhost | Add-Member -MemberType NoteProperty -Name Version -Value $vmview.Config.Product.Version
